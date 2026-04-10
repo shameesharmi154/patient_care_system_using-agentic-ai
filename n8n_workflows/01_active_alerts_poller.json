@@ -1,0 +1,42 @@
+{
+  "name": "Active Alerts Poller",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": [
+          { "everyMinutes": 1 }
+        ]
+      },
+      "name": "Cron",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 250]
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL || `http://host.docker.internal:5000` }}/api/alerts/active",
+        "responseFormat": "json"
+      },
+      "name": "Get Active Alerts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [450, 250]
+    },
+    {
+      "parameters": {
+        "command": "python",
+        "args": ["alert_router.py"]
+      },
+      "name": "Execute Alert Router",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [650, 250]
+    }
+  ],
+  "connections": {
+    "Cron": { "main": [[{"node":"Get Active Alerts","type":"main","index":0}]] },
+    "Get Active Alerts": { "main": [[{"node":"Execute Alert Router","type":"main","index":0}]] }
+  }
+}

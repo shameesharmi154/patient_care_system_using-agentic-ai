@@ -1,0 +1,52 @@
+{
+  "name": "Main Orchestrator",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": { "triggerTimes": [{ "everyMinutes": 15 }] },
+      "name": "Cron Orchestrator",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 200]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:5678/webhook/init-data-n8n",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "name": "Trigger Init Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [440, 120]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:5678/webhook/api/discharged/chat",
+        "jsonParameters": true,
+        "bodyParametersJson": "{ \"message\": \"Periodic check-in from orchestrator\", \"language\": \"en\" }"
+      },
+      "name": "Trigger Discharged Chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [440, 220]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:5678/webhook/run-script",
+        "jsonParameters": true,
+        "bodyParametersJson": "{ \"script\": \"scripts/check_counts.py\" }"
+      },
+      "name": "Trigger Script Runner",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [440, 320]
+    }
+  ],
+  "connections": {
+    "Cron Orchestrator": { "main": [[{"node":"Trigger Init Data","type":"main","index":0},{"node":"Trigger Discharged Chat","type":"main","index":0},{"node":"Trigger Script Runner","type":"main","index":0}]] }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "Patient Chat Webhook",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "api/patient/{patientId}/chat" },
+      "name": "Webhook Patient Chat",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 420]
+    },
+    {
+      "parameters": { "requestMethod": "POST", "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL || `http://host.docker.internal:5000` }}/api/patient/{{ $json[\"patientId\"] }}/chat", "jsonParameters": true },
+      "name": "Forward to App Patient Chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [480, 420]
+    }
+  ],
+  "connections": { "Webhook Patient Chat": { "main": [[{"node":"Forward to App Patient Chat","type":"main","index":0}]] } }
+}

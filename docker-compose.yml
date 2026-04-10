@@ -1,0 +1,65 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: patientcare_app
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - PRODUCTION=0
+      - BASE_URL=http://app:5000
+    volumes:
+      - ./:/app:rw
+      - ./app_data:/app  # persist DB file and other runtime artifacts
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sSf http://localhost:5000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: patientcare_n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - DB_TYPE=sqlite
+      - DB_SQLITE_FILENAME=/data/n8n.sqlite
+      - GENERIC_TIMEZONE=UTC
+      - BASE_URL=http://app:5000
+    volumes:
+      - ./n8n/data:/data
+      - ./n8n_workflows:/workflows:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sSf http://localhost:5678/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - app
+
+  n8n_importer:
+    image: n8nio/n8n:latest
+    container_name: patientcare_n8n_importer
+    depends_on:
+      n8n:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: "\n      echo 'Importing workflows into n8n...';\n      for f in /workflows/*.json; do\n        echo 'Importing' $f;\n        n8n import:workflow --input=$f --separate --yes || echo 'Import failed for' $f;\n      done;\n      echo 'Waiting for workflows to initialize...';\n      # Give n8n a moment to activate webhooks; try calling key webhook endpoints to warm them up\n      for i in 1 2 3; do\n        echo "Attempt $i: calling init-data-n8n webhook";\n        curl -sS http://n8n:5678/webhook/init-data-n8n && break || sleep 2;\n      done;\n      echo 'Triggering orchestrator endpoints (no-op if not needed)';\n      curl -sS -X POST http://n8n:5678/webhook/api/discharged/chat -H 'Content-Type: application/json' -d '{"message":"Orchestrator init","language":"en"}' || true;\n      curl -sS -X POST http://n8n:5678/webhook/run-script -H 'Content-Type: application/json' -d '{"script":"scripts/check_counts.py"}' || true;\n      echo 'Imports and initial triggers completed.';\n      exit 0\n    "
+    volumes:
+      - ./n8n_workflows:/workflows:ro
+    depends_on:
+      - n8n
+
+# Notes:
+# - Persisted volumes: ./app_data (Flask sqlite DB), ./n8n/data (n8n sqlite DB)
+# - Set GEMINI_API_KEY in an .env file or export it before starting.
+# Start with: docker compose up -d

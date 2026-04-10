@@ -1,0 +1,21 @@
+{
+  "name": "Scripts Runner (ad-hoc)",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "run-script" },
+      "name": "Webhook Run Script",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 480]
+    },
+    {
+      "parameters": { "command": "python", "args": ["={{ $json[\"script\"] || \"scripts/assign_patients.py\" }}"] },
+      "name": "Execute Script",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [460, 480]
+    }
+  ],
+  "connections": { "Webhook Run Script": { "main": [[{"node":"Execute Script","type":"main","index":0}]] } }
+}

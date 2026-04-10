@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: patientcare_n8n
+    ports:
+      - "5678:5678"
+
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_TUNNEL_URL=
+      - NODE_ENV=production
+      - DB_TYPE=sqlite
+      - DB_SQLITE_FILENAME=/data/n8n.sqlite
+      - GENERIC_TIMEZONE=UTC
+      # Optional: set BASE_URL used by the exported workflows to talk back to the Flask app
+      - BASE_URL=http://host.docker.internal:5000
+
+    volumes:
+      - ./n8n/data:/data
+      - ./n8n_workflows:/workflows:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sSf http://localhost:5678/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  n8n_importer:
+    image: n8nio/n8n:latest
+    depends_on:
+      n8n:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: "\n      echo 'Importing workflows into n8n...';\n      for f in /workflows/*.json; do\n        echo 'Importing' $f;\n        n8n import:workflow --input=$f --separate --yes || echo 'Import failed for' $f;\n      done;\n      echo 'Imports completed.';\n      exit 0\n    "
+    volumes:
+      - ./n8n_workflows:/workflows:ro
+    depends_on:
+      - n8n
+
+# Use host volumes so n8n DB and data persist on your PC
+# Start: docker compose -f docker-compose.n8n.yml up -d
+# Note: on Windows, use Docker Desktop and ensure host.docker.internal resolves for containers to reach the host Flask app.

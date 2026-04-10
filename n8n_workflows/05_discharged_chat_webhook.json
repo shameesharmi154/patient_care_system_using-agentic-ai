@@ -1,0 +1,21 @@
+{
+  "name": "Discharged Chat Webhook",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "api/discharged/chat" },
+      "name": "Webhook Discharged Chat",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 360]
+    },
+    {
+      "parameters": { "requestMethod": "POST", "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL || `http://host.docker.internal:5000` }}/api/discharged/chat", "jsonParameters": true },
+      "name": "Forward to App",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [460, 360]
+    }
+  ],
+  "connections": { "Webhook Discharged Chat": { "main": [[{"node":"Forward to App","type":"main","index":0}]] } }
+}

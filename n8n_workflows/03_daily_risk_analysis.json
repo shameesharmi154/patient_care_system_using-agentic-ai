@@ -1,0 +1,31 @@
+{
+  "name": "Daily Risk Analysis",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": { "triggerTimes": [{ "hours": ["02:00"] }] },
+      "name": "Cron Daily",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [180, 220]
+    },
+    {
+      "parameters": { "requestMethod": "GET", "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL || `http://host.docker.internal:5000` }}/api/risk-analysis/all", "responseFormat": "json" },
+      "name": "Run Risk Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [420, 220]
+    },
+    {
+      "parameters": { "command": "python", "args": ["run_analysis.py"] },
+      "name": "Save Analysis",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [660, 220]
+    }
+  ],
+  "connections": {
+    "Cron Daily": { "main": [[{"node":"Run Risk Analysis","type":"main","index":0}]] },
+    "Run Risk Analysis": { "main": [[{"node":"Save Analysis","type":"main","index":0}]] }
+  }
+}

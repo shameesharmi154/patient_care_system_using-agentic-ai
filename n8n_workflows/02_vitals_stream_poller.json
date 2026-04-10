@@ -1,0 +1,35 @@
+{
+  "name": "Vitals Stream Poller",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": { "triggerTimes": [{ "everySeconds": 5 }] },
+      "name": "Cron (5s)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [200, 200]
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL || `http://host.docker.internal:5000` }}/api/patient/1/vitals",
+        "responseFormat": "json"
+      },
+      "name": "Get Vitals Snapshot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [420, 200]
+    },
+    {
+      "parameters": { "command": "python", "args": ["scripts/check_counts.py"] },
+      "name": "Store/Process Vitals",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [640, 200]
+    }
+  ],
+  "connections": {
+    "Cron (5s)": { "main": [[{"node":"Get Vitals Snapshot","type":"main","index":0}]] },
+    "Get Vitals Snapshot": { "main": [[{"node":"Store/Process Vitals","type":"main","index":0}]] }
+  }
+}

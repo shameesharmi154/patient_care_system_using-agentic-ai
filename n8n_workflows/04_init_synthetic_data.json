@@ -1,0 +1,21 @@
+{
+  "name": "Init Synthetic Data (Manual HTTP)",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "GET", "path": "init-data-n8n" },
+      "name": "Webhook Init Data",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": { "requestMethod": "GET", "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL || `http://host.docker.internal:5000` }}/init-data", "responseFormat": "string" },
+      "name": "Call Init Endpoint",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [440, 300]
+    }
+  ],
+  "connections": { "Webhook Init Data": { "main": [[{"node":"Call Init Endpoint","type":"main","index":0}]] } }
+}
