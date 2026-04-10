@@ -1,0 +1,194 @@
+[
+  {
+    "name": "Active Alerts Poller",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {
+          "triggerTimes": [
+            { "everyMinutes": 1 }
+          ]
+        },
+        "name": "Cron",
+        "type": "n8n-nodes-base.cron",
+        "typeVersion": 1,
+        "position": [250, 250]
+      },
+      {
+        "parameters": {
+          "requestMethod": "GET",
+          "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL }}/api/alerts/active",
+          "responseFormat": "json"
+        },
+        "name": "Get Active Alerts",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [450, 250]
+      },
+      {
+        "parameters": {
+          "command": "python",
+          "args": ["alert_router.py"]
+        },
+        "name": "Execute Alert Router",
+        "type": "n8n-nodes-base.executeCommand",
+        "typeVersion": 1,
+        "position": [650, 250]
+      }
+    ],
+    "connections": {
+      "Cron": { "main": [[{"node":"Get Active Alerts","type":"main","index":0}]] },
+      "Get Active Alerts": { "main": [[{"node":"Execute Alert Router","type":"main","index":0}]] }
+    }
+  },
+  {
+    "name": "Vitals Stream Poller",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": { "triggerTimes": [{ "everySeconds": 5 }] },
+        "name": "Cron (5s)",
+        "type": "n8n-nodes-base.cron",
+        "typeVersion": 1,
+        "position": [200, 200]
+      },
+      {
+        "parameters": {
+          "requestMethod": "GET",
+          "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL }}/api/patient/1/vitals",
+          "responseFormat": "json"
+        },
+        "name": "Get Vitals Snapshot",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [420, 200]
+      },
+      {
+        "parameters": { "command": "python", "args": ["scripts/check_counts.py"] },
+        "name": "Store/Process Vitals",
+        "type": "n8n-nodes-base.executeCommand",
+        "typeVersion": 1,
+        "position": [640, 200]
+      }
+    ],
+    "connections": {
+      "Cron (5s)": { "main": [[{"node":"Get Vitals Snapshot","type":"main","index":0}]] },
+      "Get Vitals Snapshot": { "main": [[{"node":"Store/Process Vitals","type":"main","index":0}]] }
+    }
+  },
+  {
+    "name": "Daily Risk Analysis",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": { "triggerTimes": [{ "hours": ["02:00"] }] },
+        "name": "Cron Daily",
+        "type": "n8n-nodes-base.cron",
+        "typeVersion": 1,
+        "position": [180, 220]
+      },
+      {
+        "parameters": { "requestMethod": "GET", "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL }}/api/risk-analysis/all", "responseFormat": "json" },
+        "name": "Run Risk Analysis",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [420, 220]
+      },
+      {
+        "parameters": { "command": "python", "args": ["run_analysis.py"] },
+        "name": "Save Analysis",
+        "type": "n8n-nodes-base.executeCommand",
+        "typeVersion": 1,
+        "position": [660, 220]
+      }
+    ],
+    "connections": {
+      "Cron Daily": { "main": [[{"node":"Run Risk Analysis","type":"main","index":0}]] },
+      "Run Risk Analysis": { "main": [[{"node":"Save Analysis","type":"main","index":0}]] }
+    }
+  },
+  {
+    "name": "Init Synthetic Data (Manual HTTP)",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "GET", "path": "init-data-n8n" },
+        "name": "Webhook Init Data",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [200, 300]
+      },
+      {
+        "parameters": { "requestMethod": "GET", "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL }}/init-data", "responseFormat": "string" },
+        "name": "Call Init Endpoint",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [440, 300]
+      }
+    ],
+    "connections": { "Webhook Init Data": { "main": [[{"node":"Call Init Endpoint","type":"main","index":0}]] } }
+  },
+  {
+    "name": "Discharged Chat Webhook",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "api/discharged/chat" },
+        "name": "Webhook Discharged Chat",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [200, 360]
+      },
+      {
+        "parameters": { "requestMethod": "POST", "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL }}/api/discharged/chat", "jsonParameters": true },
+        "name": "Forward to App",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [460, 360]
+      }
+    ],
+    "connections": { "Webhook Discharged Chat": { "main": [[{"node":"Forward to App","type":"main","index":0}]] } }
+  },
+  {
+    "name": "Patient Chat Webhook",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "api/patient/{patientId}/chat" },
+        "name": "Webhook Patient Chat",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [200, 420]
+      },
+      {
+        "parameters": { "requestMethod": "POST", "url": "={{ $json[\"baseUrl\"] || $env.BASE_URL }}/api/patient/{{ $json[\"patientId\"] }}/chat", "jsonParameters": true },
+        "name": "Forward to App Patient Chat",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [480, 420]
+      }
+    ],
+    "connections": { "Webhook Patient Chat": { "main": [[{"node":"Forward to App Patient Chat","type":"main","index":0}]] } }
+  },
+  {
+    "name": "Scripts Runner (ad-hoc)",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": { "httpMethod": "POST", "path": "run-script" },
+        "name": "Webhook Run Script",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [200, 480]
+      },
+      {
+        "parameters": { "command": "python", "args": ["={{ $json[\"script\"] || \"scripts/assign_patients.py\" }}"] },
+        "name": "Execute Script",
+        "type": "n8n-nodes-base.executeCommand",
+        "typeVersion": 1,
+        "position": [460, 480]
+      }
+    ],
+    "connections": { "Webhook Run Script": { "main": [[{"node":"Execute Script","type":"main","index":0}]] } }
+  }
+]
